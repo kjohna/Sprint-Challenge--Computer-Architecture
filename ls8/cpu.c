@@ -114,7 +114,7 @@ void alu(struct cpu *cpu, enum alu_op op, unsigned char regA, unsigned char regB
   }
 }
 
-void interrupt(struct cpu *cpu)
+void interrupt(struct cpu *cpu, int *interrupts_enabled)
 {
   // 1. The IM register is bitwise AND-ed with the IS register and the
   //  results stored as `maskedInterrupts`.
@@ -127,13 +127,25 @@ void interrupt(struct cpu *cpu)
     if (maskedInterrupts & i)
     {
       // 1. Disable further interrupts.
+      *interrupts_enabled = 0;
       // 2. Clear the bit in the IS register.
+      cpu->gp_registers[6] = cpu->gp_registers[6] & !i;
       // 3. The `PC` register is pushed on the stack.
+      cpu->gp_registers[7]--; // decr stack pointer
+      cpu->ram[cpu->gp_registers[7]] = cpu->pc;
       // 4. The `FL` register is pushed on the stack.
+      cpu->gp_registers[7]--; // decr stack pointer
+      cpu->ram[cpu->gp_registers[7]] = cpu->fl;
       // 5. Registers R0-R6 are pushed on the stack in that order.
-      // 6. The address (_vector_ in interrupt terminology) of the appropriate
-      //   handler is looked up from the interrupt vector table.
+      for (int j = 0; j < 7; j++)
+      {
+        cpu->gp_registers[7]--; // decr stack pointer
+        cpu->ram[cpu->gp_registers[7]] = cpu->gp_registers[j];
+      }
+      // 6. The address (_vector_ in interrupt terminology) of the appropriate handler is looked up from the interrupt vector table.
+      unsigned char iv = cpu->ram[0xF7 + i];
       // 7. Set the PC is set to the handler address.
+      cpu->pc = iv;
       printf("Interrupt at %02x\n", i);
       break;
     }
@@ -149,6 +161,7 @@ void cpu_run(struct cpu *cpu)
   int oper_count, operands[2];
   unsigned char instruction;
   unsigned char moves_pc = 0;
+  int interrupts_enabled = 1;
   time_t before = time(NULL); // get current time
   // set to number of seconds between timer interrupts
   int timer_s = 1;
@@ -164,7 +177,10 @@ void cpu_run(struct cpu *cpu)
       cpu->gp_registers[6] = 0x01;
     }
     // check for/handle interrupts
-    interrupt(cpu);
+    if (interrupts_enabled)
+    {
+      interrupt(cpu, &interrupts_enabled);
+    }
     // 1. Get the value of the current instruction (in address PC).
     instruction = cpu_ram_read(cpu, cpu->pc);
     // 2. Figure out how many operands this next instruction requires
