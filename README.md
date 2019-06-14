@@ -170,5 +170,5 @@ can deliver on the following optional goals:
 
 - [ ] Add the ALU operations: `AND` `OR` `XOR` `NOT` `SHL` `SHR` `MOD`
 - [ ] Add an `ADDI` extension instruction to add an immediate value to a register
-- [ ] Add timer interrupts
+- [*] Add timer interrupts
 - [ ] Add keyboard interrupts
