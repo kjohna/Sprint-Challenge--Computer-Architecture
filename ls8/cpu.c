@@ -119,6 +119,7 @@ void interrupt(struct cpu *cpu)
   //  results stored as `maskedInterrupts`.
   unsigned char maskedInterrupts = cpu->gp_registers[5] & cpu->gp_registers[6];
   printf("checking interrupt..maskedInterrupts = %02x\n", maskedInterrupts);
+  sleep(1);
   // 2. Each bit of `maskedInterrupts` is checked, starting from 0 and going up to the 7th bit, one for each interrupt.
   for (unsigned char i = 0; i < 8; i++)
   {
@@ -149,12 +150,10 @@ void cpu_run(struct cpu *cpu)
   unsigned char instruction;
   unsigned char moves_pc = 0;
 
-  // check for/handle interrupts
-  interrupt(cpu);
-
   while (running)
   {
-    // TODO
+    // check for/handle interrupts
+    interrupt(cpu);
     // 1. Get the value of the current instruction (in address PC).
     instruction = cpu_ram_read(cpu, cpu->pc);
     // 2. Figure out how many operands this next instruction requires
