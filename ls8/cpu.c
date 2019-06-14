@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h> // to use sleep function for debugging
+#include <time.h>   // for timer interrupts
 #include "cpu.h"
 
 #define DATA_LEN 6
@@ -119,7 +120,6 @@ void interrupt(struct cpu *cpu)
   //  results stored as `maskedInterrupts`.
   unsigned char maskedInterrupts = cpu->gp_registers[5] & cpu->gp_registers[6];
   printf("checking interrupt..maskedInterrupts = %02x\n", maskedInterrupts);
-  sleep(1);
   // 2. Each bit of `maskedInterrupts` is checked, starting from 0 and going up to the 7th bit, one for each interrupt.
   for (unsigned char i = 0; i < 8; i++)
   {
@@ -149,9 +149,20 @@ void cpu_run(struct cpu *cpu)
   int oper_count, operands[2];
   unsigned char instruction;
   unsigned char moves_pc = 0;
+  time_t before = time(NULL); // get current time
+  // set to number of seconds between timer interrupts
+  int timer_s = 1;
 
   while (running)
   {
+    // timer interrupts:
+    if (before + timer_s < time(NULL))
+    {
+      // reset before
+      before = time(NULL);
+      // set timer interrupt status
+      cpu->gp_registers[6] = 0x01;
+    }
     // check for/handle interrupts
     interrupt(cpu);
     // 1. Get the value of the current instruction (in address PC).
