@@ -45,6 +45,7 @@ enum alu_op
 #define INC 0b01100101  // 65, 1 operand
 #define DEC 0b01100110  // 66, 1 operand
 #define JMP 0b01010100  // 54, 1 operand
+#define JNE 0b01010110  // 56, 1 operand
 // TODO: more instructions here. These can be used in cpu_run().
 
 // Function declarations

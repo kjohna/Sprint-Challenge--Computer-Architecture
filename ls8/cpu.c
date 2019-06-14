@@ -261,6 +261,19 @@ void cpu_run(struct cpu *cpu)
       cpu->pc = cpu->gp_registers[operands[0]];
       break;
 
+    case JNE:
+      // If `E` flag is clear (false, 0), jump to the address stored in the given register.
+      if (!(cpu->fl & 0x01))
+      {
+        cpu->pc = cpu->gp_registers[operands[0]];
+      }
+      else
+      {
+        // if not jumping, unset moves_pc so that pc increments properly
+        moves_pc = 0;
+      }
+      break;
+
     default:
       printf(">> Unknown command: %02x\n", instruction);
       break;
