@@ -119,7 +119,7 @@ void interrupt(struct cpu *cpu, int *interrupts_enabled)
   // 1. The IM register is bitwise AND-ed with the IS register and the
   //  results stored as `maskedInterrupts`.
   unsigned char maskedInterrupts = cpu->gp_registers[5] & cpu->gp_registers[6];
-  printf("checking interrupt..maskedInterrupts = %02x\n", maskedInterrupts);
+  // printf("checking interrupt..maskedInterrupts = %02x\n", maskedInterrupts);
   // 2. Each bit of `maskedInterrupts` is checked, starting from 0 and going up to the 7th bit, one for each interrupt.
   for (unsigned char i = 0; i < 8; i++)
   {
@@ -146,7 +146,8 @@ void interrupt(struct cpu *cpu, int *interrupts_enabled)
       unsigned char iv = cpu->ram[0xF7 + i];
       // 7. Set the PC is set to the handler address.
       cpu->pc = iv;
-      printf("Interrupt at %02x\n", i);
+      // printf("Interrupt at %02x\n", i);
+      // sleep(1);
       break;
     }
   }
@@ -164,13 +165,14 @@ void cpu_run(struct cpu *cpu)
   int interrupts_enabled = 1;
   time_t before = time(NULL); // get current time
   // set to number of seconds between timer interrupts
-  int timer_s = 1;
+  time_t timer_s = 1;
 
   while (running)
   {
     // timer interrupts:
-    if (before + timer_s < time(NULL))
+    if (time(NULL) >= before + timer_s)
     {
+      // printf("set timer interrupt status true.\n");
       // reset before
       before = time(NULL);
       // set timer interrupt status
@@ -208,7 +210,7 @@ void cpu_run(struct cpu *cpu)
 
     case LDI:
       // Set the value of a register to an integer.
-      printf(">> LDI command received, loading register %02x with %02x.\n", operands[0], operands[1]);
+      // printf(">> LDI command received, loading register %02x with %02x.\n", operands[0], operands[1]);
       cpu->gp_registers[operands[0]] = operands[1];
       break;
 
@@ -296,6 +298,7 @@ void cpu_run(struct cpu *cpu)
     case PRA:
       // Print alpha character value stored in the given register.
       printf("%c", cpu->gp_registers[operands[0]]);
+      fflush(stdout); // in case a \n is not printed
       break;
 
     case INC:
@@ -332,7 +335,25 @@ void cpu_run(struct cpu *cpu)
     case ST:
       // Store value in registerB in the address stored in registerA.
       cpu->ram[cpu->gp_registers[operands[0]]] = cpu->gp_registers[operands[1]];
-      printf(">> ST: value (%02x) in reg %02x stored to address %02x\n", cpu->gp_registers[operands[1]], operands[1], cpu->gp_registers[operands[0]]);
+      // printf(">> ST: value (%02x) in reg %02x stored to address %02x\n", cpu->gp_registers[operands[1]], operands[1], cpu->gp_registers[operands[0]]);
+      break;
+
+    case IRET:
+      // Return from an interrupt handler.
+      // 1. Registers R6-R0 are popped off the stack in that order.
+      for (int i = 6; i > -1; i--)
+      {
+        cpu->gp_registers[i] = cpu->ram[cpu->gp_registers[7]];
+        cpu->gp_registers[7]++; // incr stack pointer
+      }
+      // 2. The `FL` register is popped off the stack.
+      cpu->fl = cpu->ram[cpu->gp_registers[7]];
+      cpu->gp_registers[7]++; // incr stack pointer
+      // 3. The return address is popped off the stack and stored in `PC`.
+      cpu->pc = cpu->ram[cpu->gp_registers[7]];
+      cpu->gp_registers[7]++; // incr stack pointer
+      // 4. Interrupts are re-enabled
+      interrupts_enabled = 1;
       break;
 
     default:
