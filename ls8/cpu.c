@@ -113,6 +113,32 @@ void alu(struct cpu *cpu, enum alu_op op, unsigned char regA, unsigned char regB
   }
 }
 
+void interrupt(struct cpu *cpu)
+{
+  // 1. The IM register is bitwise AND-ed with the IS register and the
+  //  results stored as `maskedInterrupts`.
+  unsigned char maskedInterrupts = cpu->gp_registers[5] & cpu->gp_registers[6];
+  printf("checking interrupt..maskedInterrupts = %02x\n", maskedInterrupts);
+  // 2. Each bit of `maskedInterrupts` is checked, starting from 0 and going up to the 7th bit, one for each interrupt.
+  for (unsigned char i = 0; i < 8; i++)
+  {
+    // 3. If a bit is found to be set, follow the next sequence of steps. Stop further checking of `maskedInterrupts`.
+    if (maskedInterrupts & i)
+    {
+      // 1. Disable further interrupts.
+      // 2. Clear the bit in the IS register.
+      // 3. The `PC` register is pushed on the stack.
+      // 4. The `FL` register is pushed on the stack.
+      // 5. Registers R0-R6 are pushed on the stack in that order.
+      // 6. The address (_vector_ in interrupt terminology) of the appropriate
+      //   handler is looked up from the interrupt vector table.
+      // 7. Set the PC is set to the handler address.
+      printf("Interrupt at %02x\n", i);
+      break;
+    }
+  }
+}
+
 /**
  * Run the CPU
  */
@@ -122,6 +148,9 @@ void cpu_run(struct cpu *cpu)
   int oper_count, operands[2];
   unsigned char instruction;
   unsigned char moves_pc = 0;
+
+  // check for/handle interrupts
+  interrupt(cpu);
 
   while (running)
   {
@@ -153,7 +182,7 @@ void cpu_run(struct cpu *cpu)
 
     case LDI:
       // Set the value of a register to an integer.
-      // printf(">> LDI command received, loading register %02x with %02x.\n", operands[0], operands[1]);
+      printf(">> LDI command received, loading register %02x with %02x.\n", operands[0], operands[1]);
       cpu->gp_registers[operands[0]] = operands[1];
       break;
 
@@ -272,6 +301,12 @@ void cpu_run(struct cpu *cpu)
         // if not jumping, unset moves_pc so that pc increments properly
         moves_pc = 0;
       }
+      break;
+
+    case ST:
+      // Store value in registerB in the address stored in registerA.
+      cpu->ram[cpu->gp_registers[operands[0]]] = cpu->gp_registers[operands[1]];
+      printf(">> ST: value (%02x) in reg %02x stored to address %02x\n", cpu->gp_registers[operands[1]], operands[1], cpu->gp_registers[operands[0]]);
       break;
 
     default:
